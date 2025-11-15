@@ -1,0 +1,128 @@
+.board-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  background-color: white;
+  border-radius: 10px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.board {
+  display: flex;
+  flex-direction: column;
+  border: 3px solid #333;
+  background-color: #c8e6c9;
+}
+
+.board-row {
+  display: flex;
+}
+
+.board-row.top,
+.board-row.bottom {
+  justify-content: space-between;
+}
+
+.board-middle {
+  display: flex;
+  justify-content: space-between;
+}
+
+.board-column {
+  display: flex;
+  flex-direction: column;
+}
+
+.board-space {
+  width: 90px;
+  height: 90px;
+  border: 2px solid #333;
+  background-color: #fff;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 5px;
+  position: relative;
+  font-size: 10px;
+}
+
+.board-space.brown { border-top: 15px solid #8B4513; }
+.board-space.lightblue { border-top: 15px solid #87CEEB; }
+.board-space.pink { border-top: 15px solid #FF69B4; }
+.board-space.orange { border-top: 15px solid #FFA500; }
+.board-space.red { border-top: 15px solid #FF0000; }
+.board-space.yellow { border-top: 15px solid #FFFF00; }
+.board-space.green { border-top: 15px solid #00FF00; }
+.board-space.darkblue { border-top: 15px solid #00008B; }
+
+.space-name {
+  font-weight: bold;
+  font-size: 9px;
+  text-align: center;
+  line-height: 1.1;
+}
+
+.space-price {
+  font-size: 10px;
+  text-align: center;
+  color: #666;
+}
+
+.space-pieces {
+  display: flex;
+  gap: 5px;
+  justify-content: center;
+  margin-top: 5px;
+}
+
+.piece {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 12px;
+}
+
+.player-piece {
+  background-color: #2196F3;
+  color: white;
+}
+
+.computer-piece {
+  background-color: #F44336;
+  color: white;
+}
+
+.owned-player {
+  background-color: #E3F2FD !important;
+}
+
+.owned-computer {
+  background-color: #FFEBEE !important;
+}
+
+.board-center {
+  width: 500px;
+  height: 500px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.board-center h2 {
+  font-size: 3rem;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+  margin-bottom: 20px;
+}
+
+.center-info {
+  text-align: center;
+  font-size: 1.2rem;
+}
