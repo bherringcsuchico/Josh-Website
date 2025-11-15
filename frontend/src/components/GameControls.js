@@ -14,7 +14,7 @@ function GameControls({ game, onRoll, onBuy, onEndTurn, loading }) {
   return (
     <div className="game-controls">
       <div className="dice-display">
-        <h3>Last Roll: {game.lastDiceRoll[0]} + {game.lastDiceRoll[1]} = {game.lastDiceRoll[0] + game.lastDiceRoll[1]}</h3>
+        <h3>Last Roll: {game.lastDiceRoll && game.lastDiceRoll[0] ? `${game.lastDiceRoll[0]} + ${game.lastDiceRoll[1]} = ${game.lastDiceRoll[0] + game.lastDiceRoll[1]}` : 'Not rolled yet'}</h3>
       </div>
       
       <div className="turn-indicator">

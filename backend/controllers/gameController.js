@@ -1,12 +1,40 @@
 const Game = require('../models/Game');
 const { boardSpaces } = require('../config/boardData');
+const mongoose = require('mongoose');
+
+// In-memory storage for when MongoDB is not available
+const gamesStore = new Map();
+
+// Helper to check if MongoDB is connected
+const isMongoDBConnected = () => {
+  return mongoose.connection.readyState === 1;
+};
+
+// Helper to get game from storage
+const getGameFromStorage = async (gameId) => {
+  if (isMongoDBConnected()) {
+    return await Game.findOne({ gameId });
+  } else {
+    return gamesStore.get(gameId);
+  }
+};
+
+// Helper to save game to storage
+const saveGameToStorage = async (game, gameId) => {
+  if (isMongoDBConnected()) {
+    game.updatedAt = Date.now();
+    await game.save();
+  } else {
+    gamesStore.set(gameId, game);
+  }
+};
 
 // Initialize a new game
 exports.createGame = async (req, res) => {
   try {
     const gameId = 'game_' + Date.now();
     
-    const newGame = new Game({
+    const gameData = {
       gameId,
       player: {
         id: 'player',
@@ -39,10 +67,17 @@ exports.createGame = async (req, res) => {
       currentTurn: 'player',
       gameStatus: 'active',
       messageLog: ['Game started! Player goes first.']
-    });
+    };
 
-    await newGame.save();
-    res.json(newGame);
+    if (isMongoDBConnected()) {
+      const newGame = new Game(gameData);
+      await newGame.save();
+      res.json(newGame);
+    } else {
+      // Use in-memory storage
+      gamesStore.set(gameId, gameData);
+      res.json(gameData);
+    }
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -51,7 +86,7 @@ exports.createGame = async (req, res) => {
 // Get game state
 exports.getGame = async (req, res) => {
   try {
-    const game = await Game.findOne({ gameId: req.params.gameId });
+    const game = await getGameFromStorage(req.params.gameId);
     if (!game) {
       return res.status(404).json({ error: 'Game not found' });
     }
@@ -64,7 +99,7 @@ exports.getGame = async (req, res) => {
 // Roll dice and move
 exports.rollDice = async (req, res) => {
   try {
-    const game = await Game.findOne({ gameId: req.params.gameId });
+    const game = await getGameFromStorage(req.params.gameId);
     if (!game) {
       return res.status(404).json({ error: 'Game not found' });
     }
@@ -132,8 +167,7 @@ exports.rollDice = async (req, res) => {
       game.messageLog.push(`${currentPlayer.name} is bankrupt! Game over!`);
     }
     
-    game.updatedAt = Date.now();
-    await game.save();
+    await saveGameToStorage(game, req.params.gameId);
     res.json(game);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -143,7 +177,7 @@ exports.rollDice = async (req, res) => {
 // Buy property
 exports.buyProperty = async (req, res) => {
   try {
-    const game = await Game.findOne({ gameId: req.params.gameId });
+    const game = await getGameFromStorage(req.params.gameId);
     if (!game) {
       return res.status(404).json({ error: 'Game not found' });
     }
@@ -169,8 +203,7 @@ exports.buyProperty = async (req, res) => {
     
     game.messageLog.push(`${currentPlayer.name} bought ${property.name} for $${property.price}`);
     
-    game.updatedAt = Date.now();
-    await game.save();
+    await saveGameToStorage(game, req.params.gameId);
     res.json(game);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -180,7 +213,7 @@ exports.buyProperty = async (req, res) => {
 // End turn
 exports.endTurn = async (req, res) => {
   try {
-    const game = await Game.findOne({ gameId: req.params.gameId });
+    const game = await getGameFromStorage(req.params.gameId);
     if (!game) {
       return res.status(404).json({ error: 'Game not found' });
     }
@@ -189,8 +222,7 @@ exports.endTurn = async (req, res) => {
     game.currentTurn = game.currentTurn === 'player' ? 'computer' : 'player';
     game.messageLog.push(`${game.currentTurn === 'player' ? 'Player' : 'Computer'}'s turn`);
     
-    game.updatedAt = Date.now();
-    await game.save();
+    await saveGameToStorage(game, req.params.gameId);
     res.json(game);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -200,7 +232,7 @@ exports.endTurn = async (req, res) => {
 // Computer AI turn
 exports.computerTurn = async (req, res) => {
   try {
-    const game = await Game.findOne({ gameId: req.params.gameId });
+    const game = await getGameFromStorage(req.params.gameId);
     if (!game) {
       return res.status(404).json({ error: 'Game not found' });
     }
@@ -275,8 +307,7 @@ exports.computerTurn = async (req, res) => {
     game.currentTurn = 'player';
     game.messageLog.push("Player's turn");
     
-    game.updatedAt = Date.now();
-    await game.save();
+    await saveGameToStorage(game, req.params.gameId);
     res.json(game);
   } catch (error) {
     res.status(500).json({ error: error.message });
