@@ -1,5 +1,5 @@
 const Game = require('../models/Game');
-const { boardSpaces } = require('../config/boardData');
+const { boardSpaces, chanceCards, communityChestCards } = require('../config/boardData');
 const mongoose = require('mongoose');
 
 // In-memory storage for when MongoDB is not available
@@ -66,7 +66,9 @@ exports.createGame = async (req, res) => {
       })),
       currentTurn: 'player',
       gameStatus: 'active',
-      messageLog: ['Game started! Player goes first.']
+      messageLog: ['Game started! Player goes first.'],
+      lastDiceRoll: null,
+      winner: null
     };
 
     if (isMongoDBConnected()) {
@@ -158,6 +160,14 @@ exports.rollDice = async (req, res) => {
     } else if (landedSpace.type === 'tax') {
       currentPlayer.money -= landedSpace.amount;
       game.messageLog.push(`${currentPlayer.name} paid $${landedSpace.amount} in taxes`);
+    } else if (landedSpace.type === 'chance') {
+      processCard(game, 'chance', currentPlayer);
+    } else if (landedSpace.type === 'community_chest') {
+      processCard(game, 'community_chest', currentPlayer);
+    } else if (landedSpace.type === 'jail') {
+      if (!currentPlayer.inJail) {
+        game.messageLog.push(`${currentPlayer.name} is just visiting jail.`);
+      }
     }
     
     // Check for bankruptcy
@@ -294,6 +304,14 @@ exports.computerTurn = async (req, res) => {
     } else if (landedSpace.type === 'tax') {
       game.computer.money -= landedSpace.amount;
       game.messageLog.push(`Computer paid $${landedSpace.amount} in taxes`);
+    } else if (landedSpace.type === 'chance') {
+      processCard(game, 'chance', game.computer);
+    } else if (landedSpace.type === 'community_chest') {
+      processCard(game, 'community_chest', game.computer);
+    } else if (landedSpace.type === 'jail') {
+      if (!game.computer.inJail) {
+        game.messageLog.push('Computer is just visiting jail.');
+      }
     }
     
     // Check for bankruptcy
@@ -336,6 +354,113 @@ function calculateRent(property, game) {
   }
   
   return 0;
+}
+
+// Helper function to draw and process a card
+function processCard(game, cardType, currentPlayer) {
+  const cards = cardType === 'chance' ? chanceCards : communityChestCards;
+  const card = cards[Math.floor(Math.random() * cards.length)];
+  
+  game.messageLog.push(`${currentPlayer.name} drew: ${card.description}`);
+  
+  switch (card.type) {
+    case 'move':
+      if (card.action === 'go') {
+        currentPlayer.position = 0;
+        currentPlayer.money += 200;
+        game.messageLog.push(`${currentPlayer.name} advanced to GO and collected $200`);
+      } else {
+        const oldPosition = currentPlayer.position;
+        currentPlayer.position = card.action;
+        if (currentPlayer.position < oldPosition) {
+          currentPlayer.money += 200;
+          game.messageLog.push(`${currentPlayer.name} passed GO and collected $200`);
+        }
+        const landedSpace = boardSpaces.find(s => s.position === currentPlayer.position);
+        game.messageLog.push(`${currentPlayer.name} moved to ${landedSpace.name}`);
+      }
+      break;
+      
+    case 'move_nearest':
+      if (card.action === 'railroad') {
+        const railroads = [5, 15, 25, 35];
+        const nearest = railroads.find(r => r > currentPlayer.position) || railroads[0];
+        const oldPosition = currentPlayer.position;
+        currentPlayer.position = nearest;
+        if (currentPlayer.position < oldPosition) {
+          currentPlayer.money += 200;
+          game.messageLog.push(`${currentPlayer.name} passed GO and collected $200`);
+        }
+        const landedSpace = boardSpaces.find(s => s.position === currentPlayer.position);
+        game.messageLog.push(`${currentPlayer.name} moved to ${landedSpace.name}`);
+      } else if (card.action === 'utility') {
+        const utilities = [12, 28];
+        const nearest = utilities.find(u => u > currentPlayer.position) || utilities[0];
+        const oldPosition = currentPlayer.position;
+        currentPlayer.position = nearest;
+        if (currentPlayer.position < oldPosition) {
+          currentPlayer.money += 200;
+          game.messageLog.push(`${currentPlayer.name} passed GO and collected $200`);
+        }
+        const landedSpace = boardSpaces.find(s => s.position === currentPlayer.position);
+        game.messageLog.push(`${currentPlayer.name} moved to ${landedSpace.name}`);
+      }
+      break;
+      
+    case 'move_back':
+      currentPlayer.position = (currentPlayer.position + card.action + 40) % 40;
+      const landedSpace = boardSpaces.find(s => s.position === currentPlayer.position);
+      game.messageLog.push(`${currentPlayer.name} moved back to ${landedSpace.name}`);
+      break;
+      
+    case 'go_to_jail':
+      currentPlayer.position = 10;
+      currentPlayer.inJail = true;
+      currentPlayer.jailTurns = 0;
+      game.messageLog.push(`${currentPlayer.name} went to jail!`);
+      break;
+      
+    case 'money':
+      if (card.action === 'jail_free') {
+        game.messageLog.push(`${currentPlayer.name} received a Get Out of Jail Free card`);
+      } else if (card.action === 'pay_players' || card.action === 'collect_players') {
+        const otherPlayer = currentPlayer === game.player ? game.computer : game.player;
+        const amount = 50;
+        if (card.action === 'pay_players') {
+          currentPlayer.money -= amount;
+          otherPlayer.money += amount;
+          game.messageLog.push(`${currentPlayer.name} paid $${amount} to ${otherPlayer.name}`);
+        } else {
+          currentPlayer.money += amount;
+          otherPlayer.money -= amount;
+          game.messageLog.push(`${currentPlayer.name} collected $${amount} from ${otherPlayer.name}`);
+        }
+      } else if (card.action === 'street_repairs') {
+        let totalCost = 0;
+        currentPlayer.properties.forEach(propPos => {
+          const prop = game.properties.find(p => p.position === propPos);
+          if (prop && prop.houses > 0) {
+            if (prop.houses === 5) {
+              totalCost += 115; // Hotel
+            } else {
+              totalCost += 40 * prop.houses;
+            }
+          }
+        });
+        currentPlayer.money -= totalCost;
+        if (totalCost > 0) {
+          game.messageLog.push(`${currentPlayer.name} paid $${totalCost} for repairs`);
+        }
+      } else {
+        currentPlayer.money += card.action;
+        if (card.action > 0) {
+          game.messageLog.push(`${currentPlayer.name} received $${card.action}`);
+        } else {
+          game.messageLog.push(`${currentPlayer.name} paid $${Math.abs(card.action)}`);
+        }
+      }
+      break;
+  }
 }
 
 module.exports = exports;

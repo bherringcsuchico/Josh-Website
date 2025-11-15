@@ -42,4 +42,43 @@ const boardSpaces = [
   { position: 39, name: "Boardwalk", type: "property", color: "darkblue", price: 400, rent: [50, 200, 600, 1400, 1700, 2000] }
 ];
 
-module.exports = { boardSpaces };
+// Chance cards
+const chanceCards = [
+  { type: 'move', description: 'Advance to GO (Collect $200)', action: 'go' },
+  { type: 'move', description: 'Advance to Illinois Avenue', action: 24 },
+  { type: 'move', description: 'Advance to St. Charles Place', action: 11 },
+  { type: 'move_nearest', description: 'Advance to nearest Railroad', action: 'railroad' },
+  { type: 'move_nearest', description: 'Advance to nearest Utility', action: 'utility' },
+  { type: 'money', description: 'Bank pays you dividend of $50', action: 50 },
+  { type: 'money', description: 'Get Out of Jail Free', action: 'jail_free' },
+  { type: 'move_back', description: 'Go Back 3 Spaces', action: -3 },
+  { type: 'go_to_jail', description: 'Go to Jail', action: 'jail' },
+  { type: 'money', description: 'Pay poor tax of $15', action: -15 },
+  { type: 'move', description: 'Take a trip to Reading Railroad', action: 5 },
+  { type: 'move', description: 'Advance to Boardwalk', action: 39 },
+  { type: 'money', description: 'You have been elected Chairman of the Board. Pay each player $50', action: 'pay_players' },
+  { type: 'money', description: 'Your building loan matures. Collect $150', action: 150 },
+  { type: 'money', description: 'You have won a crossword competition. Collect $100', action: 100 }
+];
+
+// Community Chest cards
+const communityChestCards = [
+  { type: 'move', description: 'Advance to GO (Collect $200)', action: 'go' },
+  { type: 'money', description: 'Bank error in your favor. Collect $200', action: 200 },
+  { type: 'money', description: 'Doctor\'s fees. Pay $50', action: -50 },
+  { type: 'money', description: 'From sale of stock you get $50', action: 50 },
+  { type: 'money', description: 'Get Out of Jail Free', action: 'jail_free' },
+  { type: 'go_to_jail', description: 'Go to Jail', action: 'jail' },
+  { type: 'money', description: 'Grand Opera Night. Collect $50 from every player', action: 'collect_players' },
+  { type: 'money', description: 'Holiday Fund matures. Receive $100', action: 100 },
+  { type: 'money', description: 'Income tax refund. Collect $20', action: 20 },
+  { type: 'money', description: 'Life insurance matures. Collect $100', action: 100 },
+  { type: 'money', description: 'Pay hospital fees of $100', action: -100 },
+  { type: 'money', description: 'Pay school fees of $150', action: -150 },
+  { type: 'money', description: 'Receive $25 consultancy fee', action: 25 },
+  { type: 'money', description: 'You are assessed for street repairs. $40 per house, $115 per hotel', action: 'street_repairs' },
+  { type: 'money', description: 'You have won second prize in a beauty contest. Collect $10', action: 10 },
+  { type: 'money', description: 'You inherit $100', action: 100 }
+];
+
+module.exports = { boardSpaces, chanceCards, communityChestCards };

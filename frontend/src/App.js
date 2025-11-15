@@ -14,6 +14,8 @@ function App() {
   const [error, setError] = useState(null);
 
   const startNewGame = async () => {
+    // Reset previous game state before starting a new one
+    setGame(null);
     setLoading(true);
     setError(null);
     try {
