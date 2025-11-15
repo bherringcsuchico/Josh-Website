@@ -8,6 +8,7 @@ router.get('/game/:gameId', gameController.getGame);
 router.post('/game/:gameId/roll', gameController.rollDice);
 router.post('/game/:gameId/buy', gameController.buyProperty);
 router.post('/game/:gameId/endturn', gameController.endTurn);
+router.post('/game/:gameId/finish', gameController.finishActionPhase);
 router.post('/game/:gameId/computer-turn', gameController.computerTurn);
 
 module.exports = router;

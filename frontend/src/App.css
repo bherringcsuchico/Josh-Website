@@ -53,7 +53,7 @@ body {
   border: none;
   border-radius: 5px;
   cursor: pointer;
-  transition: background-color 0.3s;
+  transition: background-color 0.3s, transform 0.2s;
 }
 
 .start-screen button:hover:not(:disabled) {
@@ -93,6 +93,12 @@ body {
   margin: 10px 0;
   text-align: center;
 }
+
+.piece-select { margin-top: 10px; text-align:center; }
+.tokens { display:flex; gap:10px; margin-top:6px; flex-wrap:wrap; justify-content:center; }
+.token-btn { font-size:1.6rem; background:#ffffff22; border:2px solid #fff; width:56px; height:56px; border-radius:12px; cursor:pointer; transition:all .25s; }
+.token-btn.selected, .token-btn:hover:not(:disabled) { background:#fff; color:#333; transform:translateY(-4px); box-shadow:0 4px 10px rgba(0,0,0,0.3); }
+.token-btn:disabled { opacity:0.5; cursor:not-allowed; }
 
 .game-over {
   position: fixed;

@@ -1,13 +1,15 @@
 import React from 'react';
 import './Board.css';
 
-function Board({ properties, playerPosition, computerPosition }) {
+function Board({ properties, playerPosition, computerPosition, playerPiece, computerPiece, lastPlayerPos, lastComputerPos }) {
   const renderSpace = (position) => {
     const property = properties.find(p => p.position === position);
     if (!property) return null;
 
     const hasPlayer = playerPosition === position;
     const hasComputer = computerPosition === position;
+    const playerMoving = hasPlayer && lastPlayerPos !== playerPosition;
+    const computerMoving = hasComputer && lastComputerPos !== computerPosition;
     
     let ownerClass = '';
     if (property.owner === 'player') ownerClass = 'owned-player';
@@ -18,8 +20,8 @@ function Board({ properties, playerPosition, computerPosition }) {
         <div className="space-name">{property.name}</div>
         {property.price > 0 && <div className="space-price">${property.price}</div>}
         <div className="space-pieces">
-          {hasPlayer && <span className="piece player-piece">P</span>}
-          {hasComputer && <span className="piece computer-piece">C</span>}
+          {hasPlayer && <span className={`piece player-piece ${playerMoving ? 'moving' : ''}`}>{playerPiece || 'P'}</span>}
+          {hasComputer && <span className={`piece computer-piece ${computerMoving ? 'moving' : ''}`}>{computerPiece || 'C'}</span>}
         </div>
       </div>
     );

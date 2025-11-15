@@ -43,7 +43,8 @@ exports.createGame = async (req, res) => {
         money: 1500,
         properties: [],
         inJail: false,
-        jailTurns: 0
+        jailTurns: 0,
+        consecutiveDoubles: 0
       },
       computer: {
         id: 'computer',
@@ -52,7 +53,8 @@ exports.createGame = async (req, res) => {
         money: 1500,
         properties: [],
         inJail: false,
-        jailTurns: 0
+        jailTurns: 0,
+        consecutiveDoubles: 0
       },
       properties: boardSpaces.map(space => ({
         position: space.position,
@@ -68,7 +70,8 @@ exports.createGame = async (req, res) => {
       gameStatus: 'active',
       messageLog: ['Game started! Player goes first.'],
       lastDiceRoll: null,
-      winner: null
+      winner: null,
+      awaitingAction: false
     };
 
     if (isMongoDBConnected()) {
@@ -170,6 +173,38 @@ exports.rollDice = async (req, res) => {
       }
     }
     
+    // Doubles & action phase logic for human player
+    if (dice1 === dice2) {
+      currentPlayer.consecutiveDoubles = (currentPlayer.consecutiveDoubles || 0) + 1;
+      if (currentPlayer.consecutiveDoubles === 3) {
+        currentPlayer.position = 10;
+        currentPlayer.inJail = true;
+        currentPlayer.jailTurns = 0;
+        currentPlayer.consecutiveDoubles = 0;
+        game.awaitingAction = false;
+        game.messageLog.push(`${currentPlayer.name} rolled three doubles in a row and was sent to Jail!`);
+        game.currentTurn = currentPlayer.id === 'player' ? 'computer' : 'player';
+        game.messageLog.push(`Computer's turn`);
+        console.log(`[DEBUG] Player rolled 3 doubles: awaitingAction=${game.awaitingAction}, currentTurn=${game.currentTurn}`);
+      } else {
+        game.awaitingAction = false;
+        game.messageLog.push(`${currentPlayer.name} rolled doubles and gets another turn! (${currentPlayer.consecutiveDoubles} in a row)`);
+        console.log(`[DEBUG] Player rolled doubles: awaitingAction=${game.awaitingAction}, currentTurn=${game.currentTurn}`);
+      }
+    } else {
+      currentPlayer.consecutiveDoubles = 0;
+      if (currentPlayer.id === 'player') {
+        // Allow optional buy before auto-ending turn
+        game.awaitingAction = true;
+        game.messageLog.push('Awaiting player action (may buy property).');
+        console.log(`[DEBUG] Player did not roll doubles: awaitingAction=${game.awaitingAction}, currentTurn=${game.currentTurn}`);
+      } else {
+        game.currentTurn = 'player';
+        game.messageLog.push("Player's turn");
+        console.log(`[DEBUG] Computer did not roll doubles: awaitingAction=${game.awaitingAction}, currentTurn=${game.currentTurn}`);
+      }
+    }
+
     // Check for bankruptcy
     if (currentPlayer.money < 0) {
       game.gameStatus = game.currentTurn === 'player' ? 'lost' : 'won';
@@ -212,6 +247,14 @@ exports.buyProperty = async (req, res) => {
     currentPlayer.properties.push(property.position);
     
     game.messageLog.push(`${currentPlayer.name} bought ${property.name} for $${property.price}`);
+
+    // Auto-finish human action phase if present
+    if (game.awaitingAction && game.currentTurn === 'player' && currentPlayer.consecutiveDoubles === 0) {
+      game.awaitingAction = false;
+      game.currentTurn = 'computer';
+      game.messageLog.push("Computer's turn");
+      console.log(`[DEBUG] buyProperty: awaitingAction=${game.awaitingAction}, currentTurn=${game.currentTurn}`);
+    }
     
     await saveGameToStorage(game, req.params.gameId);
     res.json(game);
@@ -314,16 +357,33 @@ exports.computerTurn = async (req, res) => {
       }
     }
     
+    // Doubles & turn logic for computer
+    if (dice1 === dice2) {
+      game.computer.consecutiveDoubles = (game.computer.consecutiveDoubles || 0) + 1;
+      if (game.computer.consecutiveDoubles === 3) {
+        game.computer.position = 10;
+        game.computer.inJail = true;
+        game.computer.jailTurns = 0;
+        game.computer.consecutiveDoubles = 0;
+        game.messageLog.push('Computer rolled three doubles in a row and was sent to Jail!');
+        game.currentTurn = 'player';
+        game.messageLog.push("Player's turn");
+      } else {
+        game.messageLog.push(`Computer rolled doubles and gets another turn! (${game.computer.consecutiveDoubles} in a row)`);
+        // keep computer's turn
+      }
+    } else {
+      game.computer.consecutiveDoubles = 0;
+      game.currentTurn = 'player';
+      game.messageLog.push("Player's turn");
+    }
+
     // Check for bankruptcy
     if (game.computer.money < 0) {
       game.gameStatus = 'won';
       game.winner = 'player';
       game.messageLog.push('Computer is bankrupt! Player wins!');
     }
-    
-    // End computer's turn
-    game.currentTurn = 'player';
-    game.messageLog.push("Player's turn");
     
     await saveGameToStorage(game, req.params.gameId);
     res.json(game);
@@ -464,3 +524,20 @@ function processCard(game, cardType, currentPlayer) {
 }
 
 module.exports = exports;
+
+// Finish action phase when player chooses to pass (auto-end if timeout on frontend)
+exports.finishActionPhase = async (req, res) => {
+  try {
+    const game = await getGameFromStorage(req.params.gameId);
+    if (!game) return res.status(404).json({ error: 'Game not found' });
+    if (game.currentTurn !== 'player') return res.status(400).json({ error: 'Not player's turn' });
+    if (!game.awaitingAction) return res.status(400).json({ error: 'No pending action phase' });
+    game.awaitingAction = false;
+    game.currentTurn = 'computer';
+    game.messageLog.push("Player chose not to act. Computer's turn");
+    await saveGameToStorage(game, req.params.gameId);
+    res.json(game);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
